@@ -1,0 +1,3 @@
+# For CocoaPods
+Pods/
+!Podfile.lock
