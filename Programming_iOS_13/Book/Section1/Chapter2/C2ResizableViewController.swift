@@ -45,6 +45,18 @@ final class C2ResizableViewController: ScrollControllViewController, ScrollContr
         }
         views.append(view2)
         
+        let view3 = UIView(frame: CGRect())
+        let image3 = UIImage(#imageLiteral(resourceName: "earth.jpg"))
+        let imageView3 = UIImageView().then {
+            $0.image = image3
+        }
+        view3.addSubview(imageView3)
+        imageView3.snp.makeConstraints { make in
+            make.top.left.equalToSuperview().offset(100)
+            make.bottom.right.equalToSuperview().inset(100)
+        }
+        views.append(view3)
+        
         return views
     }
 }
