@@ -27,6 +27,7 @@ final class C2ImageAssetTraitCollection: ScrollControllViewController, ScrollCon
         contentViews.append(createView2())
         contentViews.append(createView3())
         contentViews.append(createView4())
+        contentViews.append(createView5())
         return contentViews
     }
     
@@ -56,6 +57,7 @@ final class C2ImageAssetTraitCollection: ScrollControllViewController, ScrollCon
         return view
     }
     
+    // About try to custom the map of image and traitCollection
     func createView2() -> UIView {
         let view = UIView()
         let darkTrait = UITraitCollection(userInterfaceStyle: .dark)
@@ -85,6 +87,7 @@ final class C2ImageAssetTraitCollection: ScrollControllViewController, ScrollCon
     func createView3() -> UIView {
         let view = UIView()
         
+        // MARK: 是的，强引用，系统会自动缓存
         let customAsset = UIImageAsset()
         let darkTrait = UITraitCollection(userInterfaceStyle: .dark)
         let lightTrait = UITraitCollection(userInterfaceStyle: .light)
@@ -113,6 +116,7 @@ final class C2ImageAssetTraitCollection: ScrollControllViewController, ScrollCon
         return view
     }
     
+    // About register traitCollection for case that image from internet
     func createView4() -> UIView {
         let view = UIView()
         
@@ -135,6 +139,39 @@ final class C2ImageAssetTraitCollection: ScrollControllViewController, ScrollCon
         label.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.top.equalTo(imageView.snp.bottom).offset(20)
+        }
+        
+        return view
+    }
+    
+    // About of dynamic color
+    func createView5() -> UIView {
+        let view = UIView()
+        let dynamicColor = UIColor(dynamicProvider: { traitCollection in
+            if traitCollection.userInterfaceStyle == .dark {
+                return .red
+            } else {
+                return .green
+            }
+        })
+        
+        let color = dynamicColor.resolvedColor(with: self.traitCollection)
+        let label_0 = UILabel().then {
+            $0.backgroundColor = color
+        }
+        let label_1 = UILabel().then {
+            $0.text = "dynamic color"
+        }
+        
+        view.addSubview(label_0)
+        view.addSubview(label_1)
+        label_0.snp.makeConstraints { make in
+            make.width.height.equalTo(100)
+            make.center.equalToSuperview()
+        }
+        label_1.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.top.equalTo(label_0.snp.bottom).offset(20)
         }
         
         return view
