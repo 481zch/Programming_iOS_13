@@ -9,6 +9,10 @@ import UIKit
 import SnapKit
 import Then
 
+/*
+ 放弃，复现不出书中的效果，只能在后面实战中进行摸索了
+ */
+
 final class C2ResizableViewController: ScrollControllViewController, ScrollControllProtocol {
     
     override func viewDidLoad() {
@@ -17,46 +21,111 @@ final class C2ResizableViewController: ScrollControllViewController, ScrollContr
         super.setContentViews(contentViews: contentViews)
     }
     
-    internal func createContentViews() -> [UIView] {
-        var views: [UIView] = []
+    func createContentViews() -> [UIView] {
+        var contentViews: [UIView] = []
         
-        let view1 = UIView(frame: CGRect())
-        let image1 = UIImage(named: "rainbow")!
-        let imageView1 = UIImageView().then {
+        contentViews.append(createView1())
+        contentViews.append(createView2())
+        contentViews.append(createView3())
+        contentViews.append(createView4())
+        contentViews.append(createView5())
+
+        return contentViews
+    }
+    
+    private func createView1() -> UIView {
+        let view = UIView()
+        let image = UIImage(named: "earth")
+        let imageView = UIImageView().then {
+            $0.frame = CGRect(900, 300)
             $0.contentMode = .scaleToFill
-            $0.image = image1.resizableImage(withCapInsets: .zero, resizingMode: .tile)
+            $0.image = image
         }
-        view1.addSubview(imageView1)
-        imageView1.snp.makeConstraints { make in
-            make.top.left.equalToSuperview().offset(100)
-            make.bottom.right.equalToSuperview().inset(100)
+        view.addSubview(imageView)
+        imageView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+            make.width.equalTo(900)
+            make.height.equalTo(300)
         }
-        views.append(view1)
-        
-        let view2 = UIView(frame: CGRect())
-        let image2 = UIImage(named: "rainbow")!
-        let imageView2 = UIImageView().then {
-            $0.image = image2.resizableImage(withCapInsets: .zero, resizingMode: .stretch)
+        return view
+    }
+    
+    private func createView2() -> UIView {
+        let view = UIView()
+        let image = UIImage(named: "earth")
+        let imageTiled = image?.resizableImage(withCapInsets: .zero, resizingMode: .tile)
+        let imageView = UIImageView().then {
+            $0.frame = CGRect(900, 300)
+            $0.contentMode = .scaleToFill
+            $0.image = imageTiled
         }
-        view2.addSubview(imageView2)
-        imageView2.snp.makeConstraints { make in
-            make.top.left.equalToSuperview().offset(100)
-            make.bottom.right.equalToSuperview().inset(100)
+        view.addSubview(imageView)
+        imageView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+            make.width.equalTo(900)
+            make.height.equalTo(300)
         }
-        views.append(view2)
-        
-        let view3 = UIView(frame: CGRect())
-        let image3 = UIImage(#imageLiteral(resourceName: "earth.jpg"))
-        let imageView3 = UIImageView().then {
-            $0.image = image3
+        return view
+    }
+    
+    private func createView3() -> UIView {
+        let view = UIView()
+        let image = UIImage(named: "earth")
+        let imageTiled = image?.resizableImage(withCapInsets: UIEdgeInsets(top: image!.size.height / 4,
+                                                                           left: image!.size.width / 4,
+                                                                           bottom: image!.size.height / 4,
+                                                                           right: image!.size.width / 4), resizingMode: .tile)
+        let imageView = UIImageView().then {
+            $0.frame = CGRect(900, 300)
+            $0.contentMode = .scaleToFill
+            $0.image = imageTiled
         }
-        view3.addSubview(imageView3)
-        imageView3.snp.makeConstraints { make in
-            make.top.left.equalToSuperview().offset(100)
-            make.bottom.right.equalToSuperview().inset(100)
+        view.addSubview(imageView)
+        imageView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+            make.width.equalTo(900)
+            make.height.equalTo(300)
         }
-        views.append(view3)
-        
-        return views
+        return view
+    }
+    
+    private func createView4() -> UIView {
+        let view = UIView()
+        let image = UIImage(named: "earth")
+        let imageTiled = image?.resizableImage(withCapInsets: .zero, resizingMode: .stretch)
+        let imageView = UIImageView().then {
+            $0.frame = CGRect(900, 300)
+            $0.contentMode = .scaleToFill
+            $0.image = imageTiled
+        }
+        view.addSubview(imageView)
+        imageView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+            make.width.equalTo(900)
+            make.height.equalTo(300)
+        }
+        return view
+    }
+    
+    private func createView5() -> UIView {
+        let view = UIView()
+        let image = UIImage(named: "earth")
+        let imageTiled = image?.resizableImage(withCapInsets: UIEdgeInsets(top: image!.size.height / 4,
+                                                                           left: image!.size.width / 4,
+                                                                           bottom: image!.size.height / 4,
+                                                                           right: image!.size.width / 4), resizingMode: .stretch)
+        let imageView = UIImageView().then {
+            $0.frame = CGRect(900, 300)
+            $0.contentMode = .scaleToFill
+            $0.image = imageTiled
+        }
+        view.addSubview(imageView)
+        imageView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+            make.width.equalTo(900)
+            make.height.equalTo(300)
+        }
+        return view
     }
 }
+
