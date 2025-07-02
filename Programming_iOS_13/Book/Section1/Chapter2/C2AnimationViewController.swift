@@ -25,7 +25,7 @@ final class C2AnimationViewController: UIViewController {
             make.center.equalToSuperview()
         }
 
-        subView.layer.addSublayer(createCALayer2())
+        subView.layer.addSublayer(createCALayer1())
     }
     
     private func createCALayer1() -> CALayer {
