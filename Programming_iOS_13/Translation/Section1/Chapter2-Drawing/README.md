@@ -348,11 +348,82 @@ Cocoa 中有许多类本身就具备绘图能力，比如 `UIImage`、`NSString`
 我们手上有两套绘图工具（UIKit 和 Core Graphics），再加上三种获取图形上下文的方式，组合起来就有 六种绘图方法 。接下来，我会用一个简单的例子——画一个蓝色圆形（如图 2-10）——来演示这六种方式的使用。此时你不需要太关注具体的绘图命令本身，而是要留意两个重点： 图形上下文是如何提供的 ，以及我们使用的是  UIKit 还是 Core Graphics 。这将帮助你理清各种绘图方式的核心差异。
 
 ### Drawing on Demand
+有四种按需绘制的方式，下面先介绍其中的第一种：实现 UIView 子类的 draw(_: ) 方法，使用 UIKit 在 Cocoa 已经为我们准备好的当前图形上下文中进行绘制：
+```swift
+override func draw(_ rect: CGRect) {
+    let p = UIBezierPath(ovalIn: CGRect(0,0,100,100))
+    UIColor.blue.setFill()
+    p.fill()
+}
+```
+现在我将使用 Core Graphics 来实现同样的功能，需要先获取当前的图形上下文引用：
+```swift
+override func draw(_ rect: CGRect) {
+    let con = UIGraphicsGetCurrentContext()!
+    con.addEllipse(in:CGRect(0,0,100,100))
+    con.setFillColor(UIColor.blue.cgColor)
+    con.fillPath()
+}
+```
+接下来，我要实现 CALayer 代理的 draw(\_:in:) 方法。这种情况下系统会把一个 CGContext 的引用传给我，但它并不是当前图形上下文。为了使用 UIKit 绘制，我必须先把它设为当前上下文，并在完成绘制后记得恢复原先的上下文。
+```swift
+override func draw(_ layer: CALayer, in con: CGContext) {
+    UIGraphicsPushContext(con)
+    let p = UIBezierPath(ovalIn: CGRect(0,0,100,100))
+    UIColor.blue.setFill()
+    p.fill()
+    UIGraphicsPopContext()
+}
+```
+在 CALayer 代理的 draw(\_:in:) 方法中使用 Core Graphics 时，我只需直接使用系统传入的那个上下文即可：
+```swift
+override func draw(_ layer: CALayer, in con: CGContext) {
+    con.addEllipse(in:CGRect(0,0,100,100))
+    con.setFillColor(UIColor.blue.cgColor)
+    con.fillPath()
+}
+```
 
 ### Drawing a UIImage
+下面我演示如何创建一个蓝色圆形的 UIImage。这个操作可以随时进行（无需等待特定方法被调用），也可以在任何类中完成（不用非得是在 UIView 子类里）。
+
+在代码中生成 UIImage 时，可以使用 UIGraphicsImageRenderer。基本做法是先创建一个渲染器实例，然后调用它的 image 方法，并在传入的闭包中编写绘图指令，最终由 image 方法返回生成的 UIImage。
+
+我将在这个例子中使用UIKit来进行绘制：
+```swift
+let r = UIGraphicsImageRenderer(size:CGSize(100,100))
+let im = r.image { _ in
+    let p = UIBezierPath(ovalIn: CGRect(0,0,100,100))
+    UIColor.blue.setFill()
+    p.fill()
+}
+// im is the blue circle image, do something with it here ...
+```
+使用Core Graphics来进行绘制：
+```swift
+let r = UIGraphicsImageRenderer(size:CGSize(100,100))
+let im = r.image { _ in
+    let con = UIGraphicsGetCurrentContext()!
+    con.addEllipse(in:CGRect(0,0,100,100))
+    con.setFillColor(UIColor.blue.cgColor)
+    con.fillPath()
+}
+// im is the blue circle image, do something with it here ...
+```
+在这些示例中，我们调用了 UIGraphicsImageRenderer 的 init(size:) 并使用了它的默认配置，这通常就能满足需求。如果想要进一步自定义图像上下文，可以先调用 UIGraphicsImageRendererFormat 的 default 类方法获取默认格式，通过该格式的各项属性进行配置，然后将其传给 UIGraphicsImageRenderer 的 init(size\:format:)。这些属性包括：
+1. opaque
+默认情况下，这个属性为 false，表示图像上下文是透明的。如果将其设为 true，图像上下文就会变为不透明并带有黑色背景，生成的图像也不会包含任何透明度。
+2. scale
+默认情况下，这个值与主屏幕的缩放比例相同，即 UIScreen.main.scale。这意味着生成的图像分辨率会与当前设备匹配。
+3. preferredRange
+   色域可从 `UIGraphicsImageRendererFormat.Range` 中选择：  
+   - `.standard`  
+   - `.extended`  
+   - `.automatic` （如果在支持“广色域”的设备上运行，则与 `.extended` 相同）
+
+UIGraphicsImageRenderer 的 image 方法会传入一个参数：UIGraphicsImageRendererContext。通过这个上下文，你可以访问初始化时使用的 UIGraphicsImageRendererFormat（format 属性），也可以通过它的 cgContext 属性获取当前的 Core Graphics 上下文（当然也可以直接调用 UIGraphicsGetCurrentContext 来获取，以保持与其他绘制方式的一致性）。此外，UIGraphicsImageRendererContext 还提供了 currentImage 属性，可以在绘制过程中随时拿到当前已经渲染出的图像快照；它自身也实现了一些基本的绘图命令。
 
 ## UIImage Drawing
-
 `UIImage` 提供了一些方法，可以将自身绘制到 当前图形上下文 中。我们之前已经学过如何获取一张 `UIImage`，也了解了如何获取并设置当前的图形上下文，所以现在我们已经具备了使用这些绘图方法的基础条件，可以开始尝试让图像“自己画自己”到画布上了。
 
 下面我们来创建一张新的 `UIImage`，图像内容是两个火星的图片并排放置在一起（如图 2-11 所示）。这个例子将展示如何在图形上下文中绘制多个图像，从而生成一张合成图。
@@ -363,30 +434,31 @@ let sz = mars.size
 let r = UIGraphicsImageRenderer(size:CGSize(sz.width*2, sz.height),
  format:mars.imageRendererFormat)
 let im = r.image { _ in
- mars.draw(at:CGPoint(0,0))
- mars.draw(at:CGPoint(sz.width,0))
+    mars.draw(at:CGPoint(0,0))
+    mars.draw(at:CGPoint(sz.width,0))
 }
 ```
 
 可以看到，在这个例子中图像的缩放处理得非常好。如果原始的火星图片在资源中包含了多个分辨率版本（例如 @1x、@2x、@3x），系统会 自动选用最适合当前设备分辨率的那一张图像 ，并为它分配正确的 `scale` 值。同时，我们绘制图像所使用的图形上下文本身也会默认采用合适的缩放比例。最终生成的合成图像 `im` 同样具备正确的 `scale` 值。
 
+![](../../../Resource/2-11.png)
+![](../../../Resource/2-12.png)
+
 这意味着： 不管设备屏幕分辨率是多少，我们的代码生成的图像在视觉上都会正确呈现，保持清晰且尺寸合理 ，无需我们做额外处理。系统的图像缩放机制在背后已经帮我们完成了适配。
 
-如果你创建图形上下文的目的是为了将一张已有的 `UIImage` 绘制进去，那么你可以通过一个优化手段提升效率：在创建 `UIGraphicsImageRenderer` 时， 使用原始图像的 `imageRendererFormat` 来初始化渲染器的格式 。这样可以确保新建的图形上下文在尺寸、缩放比例、颜色空间等方面与原图完全一致，避免不必要的转换开销，提高性能和渲染质量。
+> 如果你创建图形上下文的目的是为了将一张已有的 `UIImage` 绘制进去，那么你可以通过一个优化手段提升效率：在创建 `UIGraphicsImageRenderer` 时， 使用原始图像的 `imageRendererFormat` 来初始化渲染器的格式 。这样可以确保新建的图形上下文在尺寸、缩放比例、颜色空间等方面与原图完全一致，避免不必要的转换开销，提高性能和渲染质量。
 
-`UIImage` 还提供了一些绘图方法，可以让你在绘制时 将图像缩放到指定的矩形区域 ，相当于在绘制过程中对图像进行了尺寸调整。同时，你还可以指定 图像的混合模式（compositing/blend mode） ，也就是图像与背景内容如何叠加。
-
-为了演示这些功能，接下来我们将创建这样一张图：中间是一张火星图像，它叠加在另一张尺寸是它两倍的火星图上，并使用 `.multiply` 混合模式进行叠加（如图 2-12 所示）。这个例子可以帮助你理解图像缩放与混合模式在合成图像中的实际应用。
+`UIImage` 还提供了一些绘图方法，可以让你在绘制时 将图像缩放到指定的矩形区域 ，相当于在绘制过程中对图像进行了尺寸调整。同时，你还可以指定 图像的混合模式（compositing/blend mode） ，也就是图像与背景内容如何叠加。为了演示这些功能，接下来我们将创建这样一张图：中间是一张火星图像，它叠加在另一张尺寸是它两倍的火星图上，并使用 `.multiply` 混合模式进行叠加（如图 2-12 所示）。这个例子可以帮助你理解图像缩放与混合模式在合成图像中的实际应用。
 
 ```swift
 let mars = UIImage(named:"Mars")!
 let sz = mars.size
 let r = UIGraphicsImageRenderer(size:CGSize(sz.width*2, sz.height*2),
- format:mars.imageRendererFormat)
+    format:mars.imageRendererFormat)
 let im = r.image { _ in
- mars.draw(in:CGRect(0,0,sz.width*2,sz.height*2))
- mars.draw(in:CGRect(sz.width/2.0, sz.height/2.0, sz.width, sz.height),
- blendMode: .multiply, alpha: 1.0)
+    mars.draw(in:CGRect(0,0,sz.width*2,sz.height*2))
+    mars.draw(in:CGRect(sz.width/2.0, sz.height/2.0, sz.width, sz.height),
+    blendMode: .multiply, alpha: 1.0)
 }
 ```
 
@@ -553,7 +625,91 @@ filter.width = 30
 * 如果某个 CIFilter 需要一个输入的 CIImage，你可以直接在 CIImage 上调用 `applyingFilter(_:parameters:)` 方法，一步完成滤镜的创建、参数设置以及获取输出图像的过程。
 
 现在我们来说说如何渲染 CIImage。正如前面提到的，这一步才是真正进行图像处理计算的环节，可能会比较耗时、消耗性能。渲染 CIImage 主要有三种方式：
-1. 
+1. 使用 CIContext
+通过调用 init() 或 init(options:) 来创建一个 CIContext；这本身开销较大，所以应尽量只创建一个 CIContext 并复用它。然后调用这个 CIContext 的 createCGImage(\_:from:) 方法。第一个参数是要渲染的 CIImage，第二个参数是一个 CGRect，用来指定要渲染的 CIImage 区域。CIImage 本身没有 frame 或 bounds，它的 CGRect 被称作 extent。该方法会输出一个 CGImage。
+2. 使用 UIImage
+可以通过调用 init(ciImage:) 或 init(ciImage\:scale\:orientation:) 来创建一个包装 CIImage 的 UIImage，然后将该 UIImage 绘制到某个图形上下文中，正是这一步绘制操作触发了图像的渲染。
+3. 使用UIImageView
+这是一种比前面方法更简便的做法：先将 CIImage 包装成 UIImage，然后直接赋给 UIImageView 的 image 属性，图像视图在显示时就会自动触发渲染。通常这种方式只有在真机上才能正常工作，但在 Xcode 11 的模拟器中也有可能可用。
+
+> 还有一些渲染 CIImage 的方法，它们速度更快，非常适合动画或快速渲染。特别是可以使用 Metal，不过这超出了本书的讨论范围。
+
+现在我们可以开始一个示例了！我会先选用一张普通的个人照片（虽然我戴着摩托车头盔，但仍然是一张普通照片），然后制作一个圆形的暗角效果（见图 2-15）。我将利用 iOS 13 提供的新便捷方法和属性；要使用这些功能，需要导入 CoreImage.CIFilterBuiltins：
+```swift
+let moi = UIImage(named:"Moi")! 1️⃣
+let moici = CIImage(image:moi)!
+let moiextent = moici.extent
+let smaller = min(moiextent.width, moiextent.height)
+let larger = max(moiextent.width, moiextent.height)
+// first filter
+let grad = CIFilter.radialGradient() 2️⃣
+grad.center = moiextent.center
+grad.radius0 = Float(smaller)/2.0 * 0.7
+grad.radius1 = Float(larger)/2.0
+let gradimage = grad.outputImage!
+// second filter
+let blend = CIFilter.blendWithMask() 3️⃣
+blend.inputImage = moici
+blend.maskImage = gradimage
+let blendimage = blend.outputImage!
+```
+1️⃣ 我们先从我的照片（moi）创建一个 CIImage（命名为 moici）。
+2️⃣ 在这一步，我们使用名为 grad 的 CIFilter，在默认的白色和黑色之间生成一个径向渐变。
+3️⃣ 然后我们使用第二个 CIFilter（blend），把径向渐变当作蒙版，在我的照片和默认的透明背景之间混合。在渐变为白色的区域（渐变内半径范围内），只显示照片；在渐变为黑色的区域（渐变外半径范围外），只显示透明背景；在两者之间的区域，会出现渐变过渡，让照片在圆环区域中逐渐淡出。
+
+此时我们已经获得了滤镜链中的最终 CIImage（blendimage），处理器还没有进行任何渲染。接下来，我们要生成最终的位图并将其显示出来。假设我们要把它设置为 UIImageView 实例 self.iv 的 image，就有以下两种做法。
+
+首先，使用 CIContext 的方法。self.context 是一个属性，它在初始化时就被赋值为一个 CIContext 对象。带星号的那一行才是真正执行渲染的代码：
+```swift
+let moicg = self.context.createCGImage(blendimage, from: moiextent)! // *
+self.iv.image = UIImage(cgImage: moicg)
+```
+第二种方法是通过 UIImage 绘制；带星号的那一行就是实际执行渲染的那行代码：
+```swift
+let r = UIGraphicsImageRenderer(size:moiextent.size)
+self.iv.image = r.image { _ in
+    UIImage(ciImage: blendimage).draw(in:moiextent) // *
+}
+```
+可以通过对子类化 CIFilter，把一系列滤镜链封装成一个自定义滤镜。你的子类只需要重写 outputImage 属性（以及可能的 setDefaults 等方法），并为每个输入键添加对应属性以支持键值编码。下面示例了一个简单的暗角滤镜 CIFilter 子类，它包含两个输入键：inputImage 用来指定要进行暗角处理的图像，inputPercentage 则在 0 到 1 之间，用于调整径向渐变的内半径：
+```swift
+class MyVignetteFilter : CIFilter {
+    @objc var inputImage : CIImage?
+    @objc var inputPercentage : NSNumber? = 1.0
+    override var outputImage : CIImage? {
+        return self.makeOutputImage()
+    }
+    private func makeOutputImage () -> CIImage? {
+        guard let inputImage = self.inputImage else {return nil}
+        guard let inputPercentage = self.inputPercentage else {return nil}
+        let extent = inputImage.extent
+        let smaller = min(extent.width, extent.height)
+        let larger = max(extent.width, extent.height)
+        let grad = CIFilter.radialGradient()
+        grad.center = extent.center
+        grad.radius0 = Float(smaller)/2.0 * inputPercentage.floatValue
+        grad.radius1 = Float(larger)/2.0
+        let gradimage = grad.outputImage!
+        let blend = CIFilter.blendWithMask()
+        blend.inputImage = self.inputImage
+        blend.maskImage = gradimage
+        return blend.outputImage
+ }
+}
+```
+下面是如何使用我们的 CIFilter 子类，并将其输出显示在 UIImageView 中：
+```swift
+let vig = MyVignetteFilter()
+let moici = CIImage(image: UIImage(named:"Moi")!)!
+vig.setValuesForKeys([
+    "inputImage":moici,
+    "inputPercentage":0.7
+])
+let outim = vig.outputImage!
+let outimcg = self.context.createCGImage(outim, from: outim.extent)!
+self.iv.image = UIImage(cgImage: outimcg)
+```
+CIImage 本身就是一个功能强大的类，提供了许多便捷方法。你可以对 CIImage 应用几何变换、裁剪图像，甚至直接对其进行高斯模糊处理。此外，CIImage 能够识别 EXIF 中的方向信息，并据此自动调整自身方向。
 
 ## Blur and Vibrancy Views
 
