@@ -19,9 +19,9 @@ UIImage 中的图像数据通常来自以下三种主要来源：
 UIImage 可以读取磁盘上的图像文件，所以如果某张图片不需要在运行时动态生成，而是你在开发阶段就已经准备好了，那么绘图的过程可能就非常简单——只需要把这张图片作为资源包含在应用中即可。在包含图片资源时，iOS 对 PNG 文件有天然的支持，因此建议尽可能使用 PNG 格式的图片。（相反的操作——把图像数据保存为文件——将在第 22 章中讲解。）
 
 应用包（bundle）中已有的图像文件，最常见的获取方式是使用 UIImage 的初始化方法 `init(named:)`。它接收一个字符串作为参数，返回一个可选类型的 UIImage（因为图像可能不存在）。这个方法会在两个位置查找对应的图像文件：
-1. Asset catalog
+1. Asset catalog  
 首先会在资源目录（Asset Catalog）中查找是否存在与传入名称匹配的图像集合（image set）。这个名称是区分大小写的。
-2. Top level of app bundle
+2. Top level of app bundle  
 其次，会在应用包（App Bundle）的顶层目录查找与给定名称匹配的图像文件。这个名称同样区分大小写，并且建议包含文件扩展名；如果你没有写扩展名，系统默认会查找 `.png` 格式的文件。
 
 调用 `init(named:)` 时，系统会优先搜索资源目录（Asset Catalog），然后才会查找应用包的顶层目录。如果项目中存在多个资源目录，系统会遍历所有目录进行查找，但查找的顺序是不确定的。因此，不要在不同的资源目录中使用相同的图像名称，以避免加载到错误的图像。
@@ -328,10 +328,10 @@ image.imageFlippedForRightToLeftLayoutDirection()
 3. 当你自己创建一个图像上下文，则会自动变成当前上下文。
 
 对初学者来说，绘图最让人困惑的地方之一在于：iOS 中存在两套绘图工具，它们对“图形上下文”的使用方式截然不同。一套工具依赖于当前图形上下文的存在才能正常工作；而另一套工具则 只需要你显式提供一个上下文 ，并不关心当前上下文的状态。
-1. UIKit
+1. UIKit  
 Cocoa 中有许多类本身就具备绘图能力，比如 `UIImage`、`NSString`（用于绘制文本）、`UIBezierPath`（用于绘制路径和图形）、`UIColor` 等。这些类中有些提供了简单易用的绘图方法，适合快速上手；而有些则功能强大，可以满足复杂的绘图需求。在大多数情况下，UIKit 提供的这些工具已经足够应对日常的绘图任务。
 使用 UIKit 进行绘图时，你只能在当前图形上下文中作画。如果当前已经存在一个上下文（比如在 `UIView` 的 `draw(_:)` 方法中），你就可以直接绘图，不需要额外处理。但如果是在 `CALayer` 的绘图方法中，你会收到一个传入的上下文参数，而它并不是当前上下文。如果你还想使用 UIKit 提供的便利绘图方法（比如 `UIColor`、`UIImage` 等），你就需要手动将这个上下文推入为当前上下文，使用 `UIGraphicsPushContext(_:)`。绘图结束后，记得使用 `UIGraphicsPopContext()` 恢复原来的上下文，避免影响其他绘图操作。
-2. Core Graphics
+2. Core Graphics  
 这就是完整的绘图 API：Core Graphics ，也被称为 `Quartz` 或 `Quartz 2D`。它是 iOS 上所有绘图功能的底层系统，UIKit 的绘图功能就是构建在它之上的。Core Graphics 是一个底层绘图框架，由大量的 C 函数组成（不过在 Swift 中，这些函数通常经过了重命名，看起来更像是方法调用）。它的 API 非常丰富也较为繁琐。本章将带你了解 Core Graphics 的基础知识；如果你想深入掌握全部内容，可以查阅 Apple 的官方文档—— Quartz 2D Programming Guide。这是理解 iOS 绘图机制的权威资料。
 使用 Core Graphics 进行绘图时，你必须显式指定一个图形上下文（`CGContext`） ，所有的绘图操作都必须明确告诉系统要画到哪个上下文中。在 `CALayer` 的绘图方法中，系统会通过参数把上下文直接传给你，你只需要使用这个传入的 `CGContext` 来绘制即可。但如果你是在像 `UIView.draw(_:)` 这样的环境下绘图，此时虽然已经存在一个“当前图形上下文”，你却无法直接访问它 ，除非你调用 `UIGraphicsGetCurrentContext()` 来获取这个当前上下文的引用。这个函数就是你和当前上下文之间的桥梁。
 
@@ -405,11 +405,11 @@ let im = r.image { _ in
 // im is the blue circle image, do something with it here ...
 ```
 在这些示例中，我们调用了 `UIGraphicsImageRenderer` 的 `init(size:)` 并使用了它的默认配置，这通常就能满足需求。如果想要进一步自定义图像上下文，可以先调用 `UIGraphicsImageRendererFormat` 的 `default` 类方法获取默认格式，通过该格式的各项属性进行配置，然后将其传给 `UIGraphicsImageRenderer` 的 `init(size:format:)`。这些属性包括：
-1. `opaque`
+1. `opaque`  
 默认情况下，这个属性为 `false`，表示图像上下文是透明的。如果将其设为 `true`，图像上下文就会变为不透明并带有黑色背景，生成的图像也不会包含任何透明度。
-2. `scale`
+2. `scale`  
 默认情况下，这个值与主屏幕的缩放比例相同，即 `UIScreen.main.scale`。这意味着生成的图像分辨率会与当前设备匹配。
-3. `preferredRange`
+3. `preferredRange`  
    色域可从 `UIGraphicsImageRendererFormat.Range` 中选择：  
    * `.standard`  
    * `.extended`  
