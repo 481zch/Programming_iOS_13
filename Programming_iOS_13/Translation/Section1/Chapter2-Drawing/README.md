@@ -114,14 +114,14 @@ moods.register(smiley, with: tccom)
 
 #### Namespacing image files
 当图像文件数量众多，或者需要按功能进行分组时，就会涉及如何为它们划分命名空间的问题。以下是几种常见的做法：
-1. Folder reference
+1. Folder reference  
 你不必把所有图片都放在应用包的顶层目录下，也可以将它们放在一个专门的文件夹中。最方便的方式是将该文件夹作为“文件夹引用”添加到你的项目中。这样在构建时，整个文件夹以及其中的所有内容会被原样复制进应用包。在代码中，有多种方式可以从这样的文件夹中读取图像：
 * 可以使用 `UIImage` 的 `init(named:)` 方法，传入包含文件夹名称的路径字符串。在字符串中使用斜杠表示路径。例如，如果文件夹名为 `pix`，图片文件名为 `pic.png`，那么你传入的名称应为 `"pix/pic.png"`。这表示你要从 `pix` 文件夹中加载名为 `pic.png` 的图片。
 * 你也可以先使用 `Bundle` 的方法 `path(forResource:ofType:inDirectory:)` 获取图片文件的路径，然后再通过 `UIImage` 的 `init(contentsOfFile:)` 方法加载图像。这样可以精确地从指定文件夹中读取图片，而不依赖于资源缓存机制。
 * 你还可以先获取应用包的路径（使用 Bundle.main.bundlePath），然后结合 NSString 的路径拼接方法或 `FileManager` 的相关方法，逐级定位到目标图片文件的位置。这种方式更底层、灵活性也更高，适用于需要自定义路径解析逻辑的场景。
-2. Asset catalog folder
+2. Asset catalog folder  
 资源目录也可以通过“虚拟文件夹”来实现命名空间的功能。假设你在资源目录中有一个名为 `pix` 的文件夹，里面包含一个图像集 `myImage`，如果你在该文件夹的属性检查器中勾选了 `“Provides Namespace”` 选项，那么你就可以通过 `UIImage` 的 `init(named:)` 方法，用名称 `"pix/myImage"` 来访问这个图像。
-3. Bundle
+3. Bundle  
 `init(named:)` 方法还有一个更完整的形式是 `init(named:in:)`，其中第二个参数是一个 `bundle`。通过这种方式，你可以将图像资源放在另一个独立的 `bundle` 中，比如某个 `framework`，然后通过指定该 `bundle` 来实现图像的命名空间管理。这种做法适用于所有图像来源，无论图像是在资源目录中，还是直接位于 `bundle` 的顶层目录，都可以使用该方法进行访问。
 
 #### Image files in the nib editor
@@ -140,7 +140,7 @@ moods.register(smiley, with: tccom)
 
 `UIImageView` 如何绘制其图像，取决于它的 `contentMode` 属性（`UIView.ContentMode`）；这个属性实际上是从 `UIView` 继承而来的，本章后面我会介绍它更通用的用途。 `.scaleToFill` 表示将图像的宽度和高度拉伸到与视图的宽高一致，完全填充视图，即使这会改变图像的宽高比（`aspect ratio`）。 `.center` 表示图像会居中显示在视图中，但不会改变其原始尺寸。最常用的是 `.scaleAspectFit` 和 `.scaleAspectFill`：它们都会保持图像的原始宽高比，同时尽量填充 `UIImageView`。不同之处在于，`.scaleAspectFill` 会在两个维度上都填满视图，这可能导致部分图像超出 `UIImageView` 的边界。理解各`contentMode` 设置最好的方法，就是在 nib 编辑器里做实验：在 `UIImageView` 的 Attributes Inspector 中，通过切换 Content Mode 下拉菜单，观察图像是如何绘制和摆放的。
 
-你还需要注意 `UIImageView` 的 `clipsToBounds` 属性；如果这个属性为 `false`，那么即使图片本身比 `UIImageView` 大、即使 `contentMode` 没有把图片缩小，整张图片也可能会完整显示出来，超出 `UIImageView` 的边界。
+你还需要注意 `UIImageView` 的 `clipsToBounds` 属性；如果这个属性为 `false`，那么如果图片本身比 `UIImageView` 大、并且 `contentMode` 也没有把图片缩小，整张图片也可能会完整显示出来，超出 `UIImageView` 的边界。
 
 在使用代码创建 `UIImageView` 时，你可以利用它的便利构造器 `init(image:)`。
  默认情况下，`contentMode` 是 `.scaleToFill`，但图像最初并不会被缩放，而是 `UIImageView` 的大小会自动匹配图像的尺寸。不过，你通常还需要 `UIImageView` 在其父视图中正确定位。在这个示例中，我会把一张火星的图片放到应用界面的中央（见图 2-1；关于 `CGRect` 的 `center` 属性，请参考附录 B）。
@@ -201,6 +201,8 @@ let marsTiled = mars.resizableImage(
     resizingMode: .stretch
 )
 ```
+
+一种常见的拉伸策略是将原始图像几乎一半的区域作为 `capInsets`，只在中间保留一个很小的矩形区域，让它拉伸以填充最终图像的整个内部（见图 2-5）：
 
 ![](../../../Resource/2-4.png)
 
@@ -885,6 +887,57 @@ class MyView: UIView {
 
 ## Graphics Context Commands
 每当你进行绘图时，其实就是在向绘图上下文发送绘制指令。无论是使用 UIKit 的方法，还是调用 Core Graphics 的函数，原理都是一样的。学习绘图的关键就在于理解绘图上下文的工作方式，本节内容正是围绕这一点展开。
+
+在底层，Core Graphics 向绘图上下文发出的命令其实是一些全局 C 函数，例如 `CGContextSetFillColor`。但在 Swift 中，这些函数经过“重命名”处理后，就像把 `CGContext` 当作一个真正的对象来看待，而原来的全局函数则变成了 `CGContext` 的实例方法。此外，得益于 Swift 的重载机制，多个函数被合并为同一个方法；比如 `CGContextSetFillColor`、`CGContextSetFillColorWithColor`、`CGContextSetRGBFillColor` 和 `CGContextSetGrayFillColor` 都对应为同一个 `setFillColor`。
+
+#### Graphics Context Settings
+当你在图形上下文中绘制时，所有绘图都会遵循上下文当前的配置。因此，正确的流程是先对上下文进行设置，再执行绘制操作。举例来说，如果想先画一条红线再画一条蓝线，你应当先将上下文的线条颜色设为红色并绘制第一条线，然后将线条颜色改为蓝色并绘制第二条线。乍一看，好像红色和蓝色是各条线段自身的属性，但其实在绘制时，颜色始终是整个图形上下文的状态。
+
+图形上下文在任何时刻都有一个“状态”，它囊括了该上下文所有当前的设置；一段绘制的最终效果，正是由执行该段绘制时图形上下文的状态决定的。为了方便对整个状态进行操作，图形上下文提供了一个状态栈。每当你调用 `saveGState()` 时，上下文就会将当前状态压入栈中；每当你调用 `restoreGState()` 时，上下文就会从栈顶弹出并恢复最近保存的状态。一个常见的模式是：
+1. 调用 `saveGState()`
+2. 修改上下文的设置，从而改变其状态
+3. 执行绘制
+4. 调用 `restoreGState()` 将状态和设置恢复到修改前的样子
+
+并非每次修改上下文设置都必须在前调用 `saveGState()` 并在后调用 `restoreGState()`，因为大多数设置之间并不会相互冲突。你可以先把上下文的线条颜色设为红色，然后再改为蓝色，毫无问题。但在某些场景下，你确实需要让对设置的修改可撤销，我将在本章后面指出几个这样的场景。
+
+构成图形上下文状态的许多设置，与任何绘图应用中的配置类似，它们决定了在当前时刻执行的绘制操作的行为和外观。以下是一些常见的图形上下文状态设置，以及对应的控制命令（括号中为 UIKit 提供的属性或方法）：
+* 线条粗细和虚线样式
+  * `setLineWidth(_:)`、`setLineDash(phase:lengths:)`
+  * `UIBezierPath` 的 `lineWidth`、`setLineDash(_:count:phase:)`
+  
+* 线段端点样式和拐角连接样式
+  * `setLineCap(_:)`、`setLineJoin(_:)`、`setMiterLimit(_:)`
+  * `UIBezierPath` 的 `lineCapStyle`、`lineJoinStyle`、`miterLimit`
+
+* 线条颜色或图案
+  * `setStrokeColor(_:)`、`setStrokePattern(_:colorComponents:)`
+  * `UIColor` 的 `setStroke()`
+
+* 填充颜色或图案
+  * `setFillColor(_:)`、`setFillPattern(_:colorComponents:)`
+  * `UIColor` 的 `setFill()`
+
+* 阴影
+  * `setShadow(offset:blur:color:)`
+
+* 全局透明度和混合模式
+  * `setAlpha(_:)`、`setBlendMode(_:)`
+
+* 抗锯齿
+  * `setShouldAntialias(_:)`
+
+* 其他设置还包括：
+  * 裁剪区域：超出裁剪区域的部分不会被实际绘制
+
+* 坐标变换（CTM，即“当前变换矩阵”）
+  * 决定后续绘制命令中指定的点如何映射到画布的物理空间
+
+这些设置中的许多将在本章后面通过示例进行说明。
+
+#### Paths and Shapes
+你可以通过一系列移动一支虚拟“画笔”的指令来构造一条路径，这条路径会从一个点到另一个点被逐渐勾勒出来。首先，你需要告诉这支画笔该从哪里开始，也就是设定一个“当前点”；接下来，每一条绘制路径的指令默认都是从这个当前点开始，绘制结束的位置又会变成新的当前点，以此类推，一段接着一段地构成完整的路径。
+
 
 
 ## Points and Pixels

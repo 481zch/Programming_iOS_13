@@ -113,10 +113,12 @@ final class C2ResizableViewController: ScrollControllViewController, ScrollContr
     private func createView5() -> UIView {
         let view = UIView()
         let image = UIImage(named: "earth")
-        let imageTiled = image?.resizableImage(withCapInsets: UIEdgeInsets(top: image!.size.height / 4,
-                                                                           left: image!.size.width / 4,
-                                                                           bottom: image!.size.height / 4,
-                                                                           right: image!.size.width / 4), resizingMode: .stretch)
+        let imageTiled = image?.resizableImage(withCapInsets: UIEdgeInsets(
+           top: image!.size.height / 4,
+           left: image!.size.width / 4,
+           bottom: image!.size.height / 4,
+           right: image!.size.width / 4),
+        resizingMode: .stretch)
         let imageView = UIImageView().then {
             $0.frame = CGRect(900, 300)
             $0.contentMode = .scaleToFill
