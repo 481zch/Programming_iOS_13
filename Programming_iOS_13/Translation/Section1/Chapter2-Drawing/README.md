@@ -730,9 +730,9 @@ blend.maskImage = gradimage
 let blendimage = blend.outputImage!
 ```
 
-① 我们先从我的照片（moi）创建一个 `CIImage`（命名为 moici）。
-② 在这一步，我们使用名为 grad 的 `CIFilter`，在默认的白色和黑色之间生成一个径向渐变。
-③ 然后我们使用第二个 `CIFilter（blend）`，把径向渐变当作蒙版，在我的照片和默认的透明背景之间混合。在渐变为白色的区域（渐变内半径范围内），只显示照片；在渐变为黑色的区域（渐变外半径范围外），只显示透明背景；在两者之间的区域，会出现渐变过渡，让照片在圆环区域中逐渐淡出。
+① 我们先从我的照片（moi）创建一个 `CIImage`（命名为 moici）。  
+② 在这一步，我们使用名为 grad 的 `CIFilter`，在默认的白色和黑色之间生成一个径向渐变。  
+③ 然后我们使用第二个 `CIFilter（blend）`，把径向渐变当作蒙版，在我的照片和默认的透明背景之间混合。在渐变为白色的区域（渐变内半径范围内），只显示照片；在渐变为黑色的区域（渐变外半径范围外），只显示透明背景；在两者之间的区域，会出现渐变过渡，让照片在圆环区域中逐渐淡出。  
 
 此时我们已经获得了滤镜链中的最终 `CIImage（blendimage）`，处理器还没有进行任何渲染。接下来，我们要生成最终的位图并将其显示出来。假设我们要把它设置为 `UIImageView` 实例 `self.iv` 的 `image`，就有以下两种做法:
 
@@ -790,10 +790,102 @@ self.iv.image = UIImage(cgImage: outimcg)
 `CIImage` 本身就是一个功能强大的类，提供了许多便捷方法。你可以对 `CIImage` 应用几何变换、裁剪图像，甚至直接对其进行高斯模糊处理。此外，`CIImage` 能够识别 `EXIF` 中的方向信息，并据此自动调整自身方向。
 
 ## Blur and Vibrancy Views
+iOS 上的某些视图（比如导航栏和控制中心）是半透明的，可以模糊地呈现它们背后的内容。你可以使用 `UIVisualEffectView` 类来实现类似的效果。
+
+使用 `init(effect:)` 方法初始化 `UIVisualEffectView`，传入的参数是一个 `UIVisualEffect`。`UIVisualEffect` 是一个抽象基类，它的具体子类有 `UIBlurEffect` 和 `UIVibrancyEffect`。你可以先用带有模糊效果的视觉效果视图来模糊背后的内容，然后如果需要，再在它的 `contentView` 中添加一个带有鲜明度效果的视觉效果视图及其子视图。所有添加到 `UIVibrancyEffectView` 的子视图都应放在它的 `contentView` 中，这些子视图会被当作模板对待：它们的颜色会被替换，只有它们的不透明度或透明度会保留。切记不要直接将子视图添加到 `UIVisualEffectView` 上！
+
+通过调用 `init(style:)` 方法初始化 `UIBlurEffect`。在 iOS 13 中，引入了对浅色和深色界面自适应的 “materials” 样式，共有五种基础材质：
+`systemUltraThinMaterial`、`systemThinMaterial`、`systemMaterial`、`systemThickMaterial` 和 `systemChromeMaterial`。此外，每种基础材质都有两个非自适应的变体，名称后分别加上 `Light` 或 `Dark`（如 `systemUltraThinMaterialLight`、`systemUltraThinMaterialDark` 等）。
+* `.systemUltraThinMaterial`
+* `.systemThinMaterial`
+* `.systemMaterial`
+* `.systemThickMaterial`
+* `.systemChromeMaterial`
+
+要初始化 `UIVibrancyEffect`，可以调用 `init(blurEffect:style:)`（iOS 13 新增）。第一个参数是底层 `UIVisualEffectView` 所使用的模糊效果；第二个参数 `style` 可以是以下几种之一：
+* `.label`
+* `.secondaryLabel`
+* `.tertiaryLabel`
+* `.quaternaryLabel`
+* `.fill`
+* `.secondaryFill`
+* `.tertiaryFill`
+* `.separator`
+
+下面的示例演示一个 `UIVisualEffectView`，它覆盖并模糊了界面（`self.view`），并在其 `contentView` 中包含一个包装在 `UIVibrancyEffectView` 中的 `UILabel`：
+
+![](../../../Resource/2-16.png)
+
+```swift
+let blurEffect = UIBlurEffect(style: .systemThinMaterial)
+let blurView = UIVisualEffectView(effect: blurEffect)
+blurView.frame = view.bounds
+blurView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+view.addSubview(blurView)
+
+let vibrancyEffect = UIVibrancyEffect(blurEffect: blurEffect, style: .label)
+let vibrancyView = UIVisualEffectView(effect: vibrancyEffect)
+
+let label = UILabel()
+label.text = "Hello, world!"
+label.sizeToFit()
+
+vibrancyView.bounds = label.bounds
+vibrancyView.center = view.bounds.center
+vibrancyView.autoresizingMask = [
+    .flexibleTopMargin, .flexibleBottomMargin,
+    .flexibleLeftMargin, .flexibleRightMargin
+]
+
+blurView.contentView.addSubview(vibrancyView)
+vibrancyView.contentView.addSubview(label)
+```
+
+图 2-16 展示了在浅色和深色模式下的效果。
+
+在 nib 编辑器的对象库中，你既可以直接使用 `UIVisualEffectView`，也可以使用嵌套了 `UIVibrancyEffectView` 的 `UIVisualEffectView`。
 
 ## Drawing a UIView
+到目前为止，本章的大多数绘图示例都是生成了 `UIImage` 对象。但正如之前提到的，`UIView` 本身就提供了一个绘图上下文，你在其中绘制的内容会直接呈现在该视图上。实现方式是创建一个 `UIView` 的子类，并在其中重写 `draw(_:)` 方法。这样，无论是系统决定重绘，还是你调用 `setNeedsDisplay`，都会触发该方法，由你的子类代码来决定如何绘制视图。`draw(_:)` 方法里做的任何绘制，都会成为界面上最终显示的内容。
+
+当你重写 `draw(_:)` 方法时，通常不需要调用 `super`，因为 `UIView` 默认的 `draw(_:)` 实现是空的。系统调用 `draw(_:)` 时，当前的图形上下文已经被设置为该视图自己的上下文。你可以在这个上下文中使用 Core Graphics 函数或 UIKit 的便捷方法进行绘制。前面第96页“Graphics Contexts”一节中已有一些基础示例。
+
+按需实时绘制可能会让一些初学者感到意外，他们担心绘制操作会很耗时。这种担忧确实有道理，如果同样的绘制内容要在界面中多处使用，那么更好的做法是先生成一次 `UIImage`，然后在视图的 `draw(_:)` 中反复绘制这个 `UIImage`。
+
+一般来说，不要过早进行性能优化。看起来冗长的绘图代码往往执行得非常快。而且，iOS 的绘图系统效率很高；它只有在必要时才会调用 `draw(_:)`（或者你显式调用 `setNeedsDisplay` 时才会触发），并且视图完成绘制后会将结果缓存下来，下次就直接重用这份缓存，而不会重新执行绘制操作。（苹果将这份缓存称为视图的“位图后备存储”。）你可以在自己的 `draw(_:)` 实现里加几行日志来验证——你可能会惊讶地发现，自定义的 `UIView` 的 `draw(_:)` 在整个应用运行期间竟然只会被调用一次！
+
+实际上，把绘制逻辑放到 `draw(_:)` 方法中，往往能提高效率。这是因为绘图引擎直接在屏幕上渲染，比先在离屏缓冲区渲染再将像素复制到屏幕上要高效得多。
+
+以下是关于 `UIView` 的 `draw(_:)` 方法的三个重要注意事项：
+* 不要自己直接调用 `draw(_:)`。如果视图需要更新，并且你想触发它的 `draw(_:)` 方法，应给视图发送 `setNeedsDisplay` 消息，系统会在下一个合适的时机自动调用 `draw(_:)`。
+* 除非确定这样做合法，否则不要重写 `draw(_:)` 方法。比如，在 `UIImageView` 的子类中重写 `draw(_:)` 就是不允许的，因为你无法将自定义绘图与 `UIImageView` 本身的绘制逻辑合并。
+* 在 `draw(_:)` 中不要做除绘制之外的任何操作。这是初学者常见的错误。像设置视图的 `backgroundColor`，或者添加子视图、子图层等配置，都应该放在其他地方完成，比如在重写初始化方法时进行。
+
+当绘制工作量较大且可以拆分成若干区域时，你可以通过关注传入 `draw(_:)` 的参数来获得额外的效率提升。该参数是一个 `CGRect`，用于指定视图边界中需要刷新的区域。通常情况下，这个区域就是视图的整个 bounds；但如果你调用带有 `CGRect` 参数的 `setNeedsDisplay(_:)`，那么系统只会刷新你传入的那部分区域。你可以选择只在该区域内进行绘制；即便仍然对整个视图执行绘制操作，绘制内容也会被裁剪到指定区域内，这样虽然绘制所花时间未必减少，但渲染过程会更加高效。
+
+当你在自定义的 `UIView` 子类中实现了 `draw(_:)` 方法，并在代码里创建该子类的实例时，可能会惊讶（甚至恼火）地发现视图的背景是黑色的！这往往让初学者感到困惑。黑色背景通常出现在以下两种情况同时满足时：
+* 视图的 `backgroundColor` 为 nil
+* 视图的 `isOpaque `为 true
+
+当通过`init(frame:)`在代码中创建`UIView`时，默认这两个属性都是 true。如果你遇到黑色背景的问题并想去除它，可以重写`init(frame:)`，在其中将视图的`isOpaque`属性设置为 false。
+```swift
+class MyView: UIView {
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        self.isOpaque = false
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+```
+
+反之，如果在 nib 中创建 `UIView`，就不会出现黑色背景的问题。这是因为 nib 会为视图的 `backgroundColor` 赋予一个实际的值，即使该值是 `UIColor.clear`，也不会是 nil。
 
 ## Graphics Context Commands
+每当你进行绘图时，其实就是在向绘图上下文发送绘制指令。无论是使用 UIKit 的方法，还是调用 Core Graphics 的函数，原理都是一样的。学习绘图的关键就在于理解绘图上下文的工作方式，本节内容正是围绕这一点展开。
+
 
 ## Points and Pixels
 
