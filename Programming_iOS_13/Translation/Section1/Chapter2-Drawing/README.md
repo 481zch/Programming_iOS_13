@@ -315,11 +315,11 @@ image.imageFlippedForRightToLeftLayoutDirection()
 有时候你并不只是想把一张现成的图片直接放到界面上，而是希望通过代码自己绘制图像。这时你就需要用到图形上下文（`graphics context`）。这才是图像处理真正有趣的地方。
 
 图形上下文可以理解为一个“画布”，你所有的绘图操作都必须在这个画布上进行。换句话说，如果没有图形上下文，你在代码里就无法画图。在 iOS 中，有多种方式可以获得图形上下文，下面介绍几种最常见的方法。
-1. Cocoa creates the graphics context
+1. Cocoa creates the graphics context  
 你可以通过继承 `UIView` 并重写它的 `draw(_:)` 方法来自定义绘图。当系统调用这个方法时，Cocoa 会自动创建一个图形上下文，并要求你立即在这个上下文中进行绘制。你在这里画的内容，就是这个 `UIView` 最终在屏幕上显示的内容。
-2. Cocoa passes you a graphics context
+2. Cocoa passes you a graphics context  
 你也可以通过继承 `CALayer` 并重写它的 `draw(in:)` 方法来自定义绘图，或者为一个 `CALayer` 指定一个代理对象，并在代理中实现 `draw(_:in:)` 方法来完成绘制操作。这里的 `in:` 参数就是图形上下文。你在这个上下文中绘制的内容会显示在对应的图层上。（图层的内容将在第 3 章详细讲解。）
-3. You create an image context
+3. You create an image context  
 前面提到的两种方式都属于“按需绘制”——你把绘图代码放在系统规定的位置（比如 `draw(_:)` 或 `draw(in:)` 中），当系统认为需要重绘时，它就会自动调用这些方法。而另一种主要的绘图方式是：你直接在代码中生成一个 `UIImage`，一次性完成绘制。这种情况下，你需要使用 `UIGraphicsImageRenderer` 来创建一个图形上下文，并在其中绘制图像内容。
 
 此外，在程序运行的某个时刻，要么存在一个当前的图形上下文，要么就没有。
@@ -446,7 +446,7 @@ let im = r.image { _ in
 
 > 如果你创建图形上下文的目的是为了将一张已有的 `UIImage` 绘制进去，那么你可以通过一个优化手段提升效率：在创建 `UIGraphicsImageRenderer` 时，使用原始图像的 `imageRendererFormat` 来初始化渲染器的格式 。这样可以确保新建的图形上下文在尺寸、缩放比例、颜色空间等方面与原图完全一致，避免不必要的转换开销，提高性能和渲染质量。
 
-`UIImage` 还提供了一些绘图方法，可以让你在绘制时 将图像缩放到指定的矩形区域，相当于在绘制过程中对图像进行了尺寸调整。同时，你还可以指定图像的混合模式（compositing / blend mode），也就是图像与背景内容如何叠加。为了演示这些功能，接下来我们将创建这样一张图：中间是一张火星图像，它叠加在另一张尺寸是它两倍的火星图上，并使用 `.multiply` 混合模式进行叠加（如图 2-12 所示）。这个例子可以帮助你理解图像缩放与混合模式在合成图像中的实际应用。
+`UIImage` 还提供了一些绘图方法，可以让你在绘制时将图像缩放到指定的矩形区域，相当于在绘制过程中对图像进行了尺寸调整。同时，你还可以指定图像的混合模式（compositing / blend mode），也就是图像与背景内容如何叠加。为了演示这些功能，接下来我们将创建这样一张图：中间是一张火星图像，它叠加在另一张尺寸是它两倍的火星图上，并使用 `.multiply` 混合模式进行叠加（如图 2-12 所示）。这个例子可以帮助你理解图像缩放与混合模式在合成图像中的实际应用。
 ```swift
 let mars = UIImage(named: "Mars")!
 let sz = mars.size
@@ -662,26 +662,26 @@ for v in views {
 `CIFilter` 和 `CIImage` 中的 “CI” 代表的是 `Core Image`，它是一套通过数学滤镜对图像进行处理的技术。`Core Image` 最早是应用在 macOS 桌面系统上的，后来在 iOS 5 中被引入移动平台。当时，有些桌面系统支持的滤镜没有被移植到 iOS，可能是因为那些滤镜在计算上对移动设备来说太过复杂。随着时间推移，越来越多 macOS 上的滤镜被添加进了 iOS，现在两者已经完全一致：macOS 上的所有滤镜在 iOS 上也都可以使用，两套系统的 API 几乎是一样的。
 
 滤镜在 Core Image 中就是一个 `CIFilter`。可用的滤镜有 200 多种，按照功能大致可以分成几个主要的类别：
-1. 图案和渐变类滤镜
+1. 图案和渐变类滤镜  
 这类滤镜用于生成 `CIImage`，可作为图像素材与其他 `CIImage` 进行合成。生成的内容包括单一颜色、棋盘格、条纹、渐变色等。
-2. 合成类滤镜
+2. 合成类滤镜  
 这类滤镜将一张图像与另一张图像进行合成，使用的合成方式类似于图像处理软件中常见的混合模式（blend modes），比如叠加、正片叠底、屏幕等。
-3. 颜色类滤镜
+3. 颜色类滤镜  
 这类滤镜用于调整或修改图像的颜色属性。你可以改变图像的饱和度、色相、亮度、对比度、伽马值、白点、曝光度、阴影和高光等。
-4. 几何类滤镜
+4. 几何类滤镜  
 这类滤镜对图像进行基本的几何变换，例如缩放、旋转、裁剪等操作。
 5. 变形类滤镜
 这类滤镜用于对图像进行扭曲、模糊或风格化处理。
-6. 过渡类滤镜
+6. 过渡类滤镜  
 这类滤镜用于在两张图像之间生成过渡帧。通过按顺序请求多个帧，你可以实现图像之间的动画过渡（我会在第 4 章中进行演示）。
-7. 特殊用途类滤镜
+7. 特殊用途类滤镜  
 这类滤镜执行一些特定功能的操作，比如人脸识别、条形码或二维码的生成等。
 
 `CIFilter` 本质上是一组用于生成 `CIImage` 的指令——也就是滤镜的输出图像。而大多数 `CIFilter` 又需要一个 `CIImage` 作为输入图像。因此，一个滤镜的输出图像可以作为另一个滤镜的输入，这样就能把多个滤镜串联起来。在你构建滤镜链的过程中，实际上图像处理并没有立即发生——你只是在配置一组处理步骤的执行顺序。
 
 如果滤镜链中的第一个 `CIFilter` 需要一个输入图像，你可以通过 `init(cgImage:)` 从 `CGImage` 创建一个 `CIImage`，或者通过 `init(image:)` 从 `UIImage` 创建。当最后一个 `CIFilter` 生成一个 `CIImage` 后，你可以将它转换为位图图像（`CGImage` 或 `UIImage`）。也就是说，整个图像处理过程是通过 `CIImage` 和 `CIFilter` 作为中间步骤，最终把一张图变成了另一张图。最后这一步，把 `CIImage` 转换成实际的位图图像，叫做“渲染”（rendering）。图像的所有处理计算，只有在渲染时才真正执行。也就是说，只有在渲染最后那个 `CIImage` 的时候，才会进行一次真正消耗性能的图像处理运算。
 
-> 初学者常犯的一个错误，是试图通过 `UIImage` 的 `ciImage` 属性直接获取 `CIImage`。通常这种做法是行不通的。这个属性并不会把 `UIImage` 转换成 `CIImage`，它只在 `UIImage` 本身就是基于 CIImage 创建的情况下才有值。而大多数 `UIImage` 实际上是包装了 `CGImage` 的，因此它们的 `ciImage` 属性通常是 `nil`。
+> 初学者常犯的一个错误，是试图通过 `UIImage` 的 `ciImage` 属性直接获取 `CIImage`。通常这种做法是行不通的。这个属性并不会把 `UIImage` 转换成 `CIImage`，它只在 `UIImage` 本身就是基于 `CIImage` 创建的情况下才有值。而大多数 `UIImage` 实际上是包装了 `CGImage` 的，因此它们的 `CIImage` 属性通常是 `nil`。
 
 CIFilter 的基本用法其实很简单：
 1. 首先，你需要获取一个 `CIFilter` 对象。可以通过滤镜的字符串名称使用 `init(name:)` 来创建。想了解有哪些可用的滤镜名称，可以查阅 Apple 的 Core Image Filter Reference 文档，或者调用 `CIFilter` 的类方法 `filterNames(inCategories:)`，传入 `nil` 来获取所有滤镜名称。从 iOS 13 开始，Apple 还提供了一种更方便的方式：你可以直接调用 CIFilter 的快捷类方法，这些方法的名称就对应于滤镜的字符串名称。
@@ -703,16 +703,19 @@ filter.width = 30
 * 如果某个 `CIFilter` 需要一个输入的 `CIImage`，你可以直接在 `CIImage` 上调用 `applyingFilter(_:parameters:)` 方法，一步完成滤镜的创建、参数设置以及获取输出图像的过程。
 
 现在我们来说说如何渲染 `CIImage`。正如前面提到的，这一步才是真正进行图像处理计算的环节，可能会比较耗时、消耗性能。渲染 `CIImage` 主要有三种方式：
-1. 使用 `CIContext`
+1. 使用 `CIContext`  
 通过调用 `init()` 或 `init(options:)` 来创建一个 `CIContext`；这本身开销较大，所以应尽量只创建一个 `CIContext` 并复用它。然后调用这个 `CIContext` 的 `createCGImage(_:from:)` 方法。第一个参数是要渲染的 `CIImage`，第二个参数是一个 `CGRect`，用来指定要渲染的 `CIImage` 区域。`CIImage` 本身没有 `frame` 或 `bounds`，它的 `CGRect` 被称作 `extent`。该方法会输出一个 `CGImage`。
-2. 使用 `UIImage`
+2. 使用 `UIImage`  
 可以通过调用 `init(ciImage:)` 或 `init(ciImage:scale:orientation:)` 来创建一个包装 `CIImage` 的 `UIImage`，然后将该 `UIImage` 绘制到某个图形上下文中，正是这一步绘制操作触发了图像的渲染。
-3. 使用 `UIImageView`
+3. 使用 `UIImageView`  
 这是一种比前面方法更简便的做法：先将 `CIImage` 包装成 `UIImage`，然后直接赋给 `UIImageView` 的 `image` 属性，图像视图在显示时就会自动触发渲染。通常这种方式只有在真机上才能正常工作，但在 Xcode 11 的模拟器中也有可能可用。
 
 > 还有一些渲染 `CIImage` 的方法，它们速度更快，非常适合动画或快速渲染。特别是可以使用 `Metal`，不过这超出了本书的讨论范围。
 
 现在我们可以开始一个示例了！我会先选用一张普通的个人照片（虽然我戴着摩托车头盔，但仍然是一张普通照片），然后制作一个圆形的暗角效果（见图 2-15）。我将利用 iOS 13 提供的新便捷方法和属性；要使用这些功能，需要导入 `CoreImage.CIFilterBuiltins`：
+
+![](../../../Resource/2-15.png)
+
 ```swift
 let moi = UIImage(named:"Moi")! ①
 let moici = CIImage(image:moi)!
