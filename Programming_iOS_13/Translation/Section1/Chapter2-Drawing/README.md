@@ -797,7 +797,7 @@ self.iv.image = UIImage(cgImage: outimcg)
 ## Blur and Vibrancy Views
 iOS 上的某些视图（比如导航栏和控制中心）是半透明的，可以模糊地呈现它们背后的内容。你可以使用 `UIVisualEffectView` 类来实现类似的效果。
 
-使用 `init(effect:)` 方法初始化 `UIVisualEffectView`，传入的参数是一个 `UIVisualEffect`。`UIVisualEffect` 是一个抽象基类，它的具体子类有 `UIBlurEffect` 和 `UIVibrancyEffect`。你可以先用带有模糊效果的视觉效果视图来模糊背后的内容，然后如果需要，再在它的 `contentView` 中添加一个带有鲜明度效果的视觉效果视图及其子视图。所有添加到 `UIVibrancyEffectView` 的子视图都应放在它的 `contentView` 中，这些子视图会被当作模板对待：它们的颜色会被替换，只有它们的不透明度或透明度会保留。切记不要直接将子视图添加到 `UIVisualEffectView` 上！
+`UIVisualEffectView` 通过调用 `init(effect:)` 来初始化，其中的参数是一个 `UIVisualEffect`。`UIVisualEffect` 是一个抽象基类，具体实现类有 `UIBlurEffect`（模糊效果）和 `UIVibrancyEffect`（鲜明效果）。通常你会使用带有模糊效果的视觉效果视图来模糊其背后的内容；然后如果需要，还可以添加一个带有鲜明效果的视觉效果视图及其子视图。具体来说，`UIVibrancyEffect` 创建的视图需要作为子视图放到模糊效果视图的 `contentView` 中，而任何需要应用鲜明效果的视图都要再放到鲜明效果视图自身的 `contentView` 里。这些子视图会被系统当作模板使用，也就是说，它们的原始颜色将被忽略，只有不透明度或透明度才会对显示产生影响。特别注意一点，千万不要直接将子视图添加到 `UIVisualEffectView` 本身，而应该始终添加到其 `contentView` 中。
 
 通过调用 `init(style:)` 方法初始化 `UIBlurEffect`。在 iOS 13 中，引入了对浅色和深色界面自适应的 “materials” 样式，共有五种基础材质：
 `systemUltraThinMaterial`、`systemThinMaterial`、`systemMaterial`、`systemThickMaterial` 和 `systemChromeMaterial`。此外，每种基础材质都有两个非自适应的变体，名称后分别加上 `Light` 或 `Dark`（如 `systemUltraThinMaterialLight`、`systemUltraThinMaterialDark` 等）。
