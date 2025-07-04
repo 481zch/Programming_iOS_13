@@ -45,8 +45,8 @@ if let path = Bundle.main.path(forResource: "pic", ofType: "png") {
 }
 ```
 * 设备类型变体
-如果图片文件名加上 ~ipad 后缀，当应用在 iPad 上原生运行时，系统会自动使用这个文件。在通用应用中（即同时支持 iPhone 和 iPad 的应用），你可以利用这个机制，根据设备类型自动加载不同的图像资源。这种后缀机制不仅适用于图像资源，也适用于通过名称从应用包中获取的任何资源。具体细节可以参考 Apple 文档中的 Resource Programming Guide。
-这种机制适用于 `UIImage` 的 `init(named:)` 方法和 `Bundle` 的 `path(forResource:ofType:)` 方法。如果应用包中同时存在名为 `pic.png` 和 pic~ipad.png 的文件，那么在 iPad 上运行时，这两个方法会优先加载 pic~ipad.png。
+如果图片文件名加上 \~ipad 后缀，当应用在 iPad 上原生运行时，系统会自动使用这个文件。在通用应用中（即同时支持 iPhone 和 iPad 的应用），你可以利用这个机制，根据设备类型自动加载不同的图像资源。这种后缀机制不仅适用于图像资源，也适用于通过名称从应用包中获取的任何资源。具体细节可以参考 Apple 文档中的 Resource Programming Guide。
+这种机制适用于 `UIImage` 的 `init(named:)` 方法和 `Bundle` 的 `path(forResource:ofType:)` 方法。如果应用包中同时存在名为 `pic.png` 和 pic\~ipad.png 的文件，那么在 iPad 上运行时，这两个方法会优先加载 pic\~ipad.png。
 ```swift
 let im = UIImage(named:"pic") // uses pic~ipad.png
 let path = Bundle.main.path(forResource: "pic", ofType: "png") // uses pic~ipad.png
