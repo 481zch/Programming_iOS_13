@@ -941,9 +941,434 @@ class MyView: UIView {
 #### Paths and Shapes
 你可以通过一系列移动一支虚拟“画笔”的指令来构造一条路径，这条路径会从一个点到另一个点被逐渐勾勒出来。首先，你需要告诉这支画笔该从哪里开始，也就是设定一个“当前点”；接下来，每一条绘制路径的指令默认都是从这个当前点开始，绘制结束的位置又会变成新的当前点，以此类推，一段接着一段地构成完整的路径。
 
+路径可以是复合的，这意味着它由多个独立的部分组成。一条路径可能包含两个分开的闭合图形，比如一个矩形和一个圆。在构造路径的过程中，如果你在中途调用 `move(to:)`，就相当于提起虚拟画笔，将其移动到新的位置而不绘制任何线段，为同一路径中的另一个独立部分做好准备。
 
+如果你担心在开始勾勒新路径时，之前可能已有路径存在，而新的路径会被当作复合路径的一部分，你可以调用 `beginPath` 来声明这是另一条独立路径；虽然很多 Apple 的示例中会这样做，但在实际开发中我通常觉得并不必要。
+
+以下是一些常用的路径绘制命令：
+* 设置当前点：  
+  使用 `move(to:)`
+
+* 绘制直线：  
+  使用 `addLine(to:)` 或 `addLines(between:)`
+
+* 绘制矩形：  
+  使用 `addRect(_:)` 或 `addRects(_:)`
+
+* 绘制椭圆或圆：  
+  使用 `addEllipse(in:)`
+
+* 绘制带切线的弧线：  
+  使用 `addArc(tangent1End:tangent2End:radius:)`
+
+* 绘制贝塞尔曲线（单控制点或双控制点）：  
+  使用 `addQuadCurve(to:control:)` 或 `addCurve(to:control1:control2:)`
+
+* 封闭当前路径：  
+  使用 `closePath()`，它会将路径的最后一点与起始点相连。
+  如果你接下来要使用填充（fill），可以不用手动调用，因为填充时会自动封闭路径。
+
+请注意，定义路径本身并不等同于绘制。你需要先构造一条路径，然后才能进行绘制。绘制可以是对路径进行描边（`strokePath()`），也可以是填充（`fillPath()`），或者两者同时进行。这与许多绘图软件中的概念类似。重要的是，每次执行描边或填充操作后，当前路径都会被清除——路径就此结束，若要绘制新路径，需要重新开始构建。
+
+对当前路径执行描边（`strokePath()`）或填充（`fillPath()`），这两者都会在操作完成后清除该路径。  
+`strokePath()`, `fillPath(using:)` 和 `drawPath()`。如果你想在一个命令中同时对路径进行描边和填充，就应使用 `drawPath()`，因为如果你仅用 `strokePath()` 先描边，路径会被清除，之后就无法再填充了。还有一些便捷函数，可以直接从一个 `CGRect` 或类似对象创建路径，并一次性完成描边或填充：
+* `stroke(_\:)`, `strokeLineSegments(between:)`
+* `fill(_\:)`
+* `strokeEllipse(in:)`
+* `fillEllipse(in:)`
+
+![](../../../Resource/2-17.png)
+
+如果需要重复使用或共享一条路径，可以将它封装为`CGPath`。就像`CGContext`一样，`CGPath`及其可变版本`CGMutablePath`在 Swift 中被当作类类型处理，对应的全局 C 函数也被映射成它们的实例方法。你可以通过`CGContext`的`path`方法拷贝当前图形上下文的路径；也可以创建一个新的`CGMutablePath`，并使用与`CGContext`路径构造函数对应的各种方法（例如`move(to:transform:)`和`addLine(to:transform:)`）来构建路径。此外，你还可以根据简单的几何图形或已有的路径来生成新路径：
+* `init(rect:transform:)`
+* `init(ellipseIn:transform:)`
+* `init(roundedRect:cornerWidth:cornerHeight:transform:)`
+* `copy(strokingWithWidth:lineCap:lineJoin:miterLimit:transform:)`
+* `copy(dashingWithPhase:lengths:transform:)`
+* `copy(using:)` (takes a pointer to a CGAffineTransform)
+
+下面我演示一下典型的路径绘制命令用法：我将使用基础命令（故意不使用便利函数）来构造图 2-17 中那把向上箭头。这样做或许不是最简便的方式，但能清晰地展示多种常用命令的基本用法：
+```swift
+// obtain the current graphics context
+let con = UIGraphicsGetCurrentContext()!
+// draw a black (by default) vertical line, the shaft of the arrow
+con.move(to:CGPoint(100, 100))
+con.addLine(to:CGPoint(100, 19))
+con.setLineWidth(20)
+con.strokePath()
+// draw a red triangle, the point of the arrow
+con.setFillColor(UIColor.red.cgColor)
+con.move(to:CGPoint(80, 25))
+con.addLine(to:CGPoint(100, 0))
+con.addLine(to:CGPoint(120, 25))
+con.fillPath()
+// snip a triangle out of the shaft by drawing in Clear blend mode
+con.move(to:CGPoint(90, 101))
+con.addLine(to:CGPoint(100, 90))
+con.addLine(to:CGPoint(110, 101))
+con.setBlendMode(.clear)
+con.fillPath()
+```
+
+UIKit 类 `UIBezierPath` 实际上是对 `CGPath` 的封装；它包装的路径保存在 `cgPath` 属性中。`UIBezierPath` 提供了与 `CGContext` 和 `CGPath` 函数对应的路径构造方法，例如：
+* `init(rect:)`
+* `init(ovalIn:)`
+* `init(roundedRect:cornerRadius:)`
+* `move(to:)`
+* `addLine(to:)`
+* `addArc(withCenter:radius:startAngle:endAngle:clockwise:)`
+* `addQuadCurve(to:controlPoint:)`
+* `addCurve(to:controlPoint1:controlPoint2:)`
+* `close`
+
+当你调用 `UIBezierPath` 实例的 `fill()`、`stroke()`、`fill(with:alpha:)` 或 `stroke(with:alpha:)` 方法时，系统会先保存当前的图形上下文设置，然后将该对象所包装的 `CGPath` 设为当前上下文的路径并执行描边或填充，最后再恢复之前的上下文设置。
+
+结合 `UIBezierPath` 和 `UIColor`，我们可以完全使用 UIKit 方法重写箭头绘制流程：
+```swift
+let p = UIBezierPath()
+// shaft
+p.move(to:CGPoint(100,100))
+p.addLine(to:CGPoint(100, 19))
+p.lineWidth = 20
+p.stroke()
+// point
+UIColor.red.set()
+p.removeAllPoints()
+p.move(to:CGPoint(80,25))
+p.addLine(to:CGPoint(100, 0))
+p.addLine(to:CGPoint(120, 25))
+p.fill()
+// snip
+p.removeAllPoints()
+p.move(to:CGPoint(90,101))
+p.addLine(to:CGPoint(100, 90))
+p.addLine(to:CGPoint(110, 101))
+p.fill(with:.clear, alpha:1.0)
+```
+
+这里使用 UIKit 方法与调用 Core Graphics 函数在代码量上并没有差别，所以选择哪一种完全取决于个人喜好。
+
+#### Clipping
+路径可以用来遮罩特定区域，让后续绘制仅在这些区域内生效，这就是所谓的裁剪。默认情况下，图形上下文的裁剪区域就是整个上下文，也就是说你可以在上下文的任意位置进行绘制。
+
+裁剪区域是整个上下文的一个特性，任何新的裁剪区域都会与现有的裁剪区域取交集。要将裁剪区域恢复到默认状态，可以调用`resetClip()`。
+
+为了演示这一点，我会把生成原始箭头（图 2-17）的代码改写为：使用裁剪（clipping）而不是混合模式来“打孔”箭头尾部的三角缺口。这有点棘手，因为我们要裁剪的不是三角形内部，而是它的外部。为此，我们将构造一个复合路径，其中包含多个闭合区域——三角形本身，以及整个绘制区域（可以通过上下文的 `boundingBoxOfClipPath` 获取）。
+
+在填充复合路径或将其用作裁剪区域时，系统都会遵循以下两条规则之一：
+* 绕组规则  
+填充或裁剪区域由路径各部分的方向（顺时针或逆时针）的交替来确定。
+
+* 偶数-奇数规则（Even-odd rule，EO）  
+系统通过简单地统计路径对每个区域的划定次数，来决定该区域是否属于填充或裁剪的范围。
+
+在我们的场景中非常简单，因此使用偶数-奇数规则更为方便：
+```swift
+// obtain the current graphics context
+let con = UIGraphicsGetCurrentContext()!
+// punch triangular hole in context clipping region
+con.move(to:CGPoint(90, 100))
+con.addLine(to:CGPoint(100, 90))
+con.addLine(to:CGPoint(110, 100))
+con.closePath()
+con.addRect(con.boundingBoxOfClipPath)
+con.clip(using:.evenOdd)
+// draw the vertical line
+con.move(to:CGPoint(100, 100))
+con.addLine(to:CGPoint(100, 19))
+con.setLineWidth(20)
+con.strokePath()
+// draw the red triangle, the point of the arrow
+con.setFillColor(UIColor.red.cgColor)
+con.move(to:CGPoint(80, 25))
+con.addLine(to:CGPoint(100, 0))
+con.addLine(to:CGPoint(120, 25))
+con.fillPath()
+```
+
+> How Big Is My Context?  
+At first blush, it appears that there’s no way to learn a graphics context’s size. Typi‐
+cally, this doesn’t matter, because either you created the graphics context or it’s the
+graphics context of some object whose size you know, such as a UIView. But in fact,
+because the default clipping region of a graphics context is the entire context, you can
+use boundingBoxOfClipPath to learn the context’s “bounds.”
+
+用于裁剪的 `UIBezierPath` 命令有 `usesEvenOddFillRule` 和 `addClip`。
+
+#### Gradients
+渐变的形式可以从最简单到非常复杂各不相同。这里我们只讨论最基本的“简单渐变”：它由起点和终点的两种颜色决定，并且可以（可选地）在中间添加若干颜色。然后，你可以在两点之间进行线性渐变，或者在两个同心圆之间进行径向渐变。虽然不能直接把渐变当作路径的填充色，但你可以通过裁剪将渐变限制在某条路径的形状内，这在很多情况下已经足够满足需求。
+
+为了演示这一效果，我将重新绘制箭头，用线性渐变来表现箭杆部分（见图 2-18）：
+
+![](../../../Resource/2-18.png)
+
+```swift
+// obtain the current graphics context
+let con = UIGraphicsGetCurrentContext()!
+
+// punch triangular hole in context clipping region
+con.move(to: CGPoint(x: 10, y: 100))
+con.addLine(to: CGPoint(x: 20, y: 90))
+con.addLine(to: CGPoint(x: 30, y: 100))
+con.closePath()
+con.addRect(con.boundingBoxOfClipPath)
+con.clip(using: .evenOdd)
+
+// draw the vertical line, add its shape to the clipping region
+con.move(to: CGPoint(x: 20, y: 100))
+con.addLine(to: CGPoint(x: 20, y: 19))
+con.setLineWidth(20)
+con.replacePathWithStrokedPath()
+con.clip()
+
+// draw the gradient
+let locs: [CGFloat] = [0.0, 0.5, 1.0]
+let colors: [CGFloat] = [
+    0.8, 0.4, // starting color: 透明浅灰
+    0.1, 0.5, // intermediate: 半透明深灰
+    0.8, 0.4, // ending color: 透明浅灰
+]
+let sp = CGColorSpaceCreateDeviceGray()
+let grad = CGGradient(
+    colorSpace: sp,
+    colorComponents: colors,
+    locations: locs,
+    count: locs.count
+)!
+con.drawLinearGradient(
+    grad,
+    start: CGPoint(x: 89, y: 0),
+    end: CGPoint(x: 111, y: 0),
+    options: []
+)
+con.resetClip() // done clipping
+
+// draw the red triangle, the point of the arrow
+con.setFillColor(UIColor.red.cgColor)
+con.move(to: CGPoint(x: 80, y: 25))
+con.addLine(to: CGPoint(x: 100, y: 0))
+con.addLine(to: CGPoint(x: 120, y: 25))
+con.fillPath()
+```
+
+然后我们创建渐变并将它绘制出来。虽然这段流程看起来冗长，但其实非常简单，都是固定模板。我们把渐变描述为一组位置数组，这些位置从起点（0.0）延伸到终点（1.0），并为每个位置指定对应的颜色分量。在这个例子里，我希望渐变两端较浅、中间较深，因此使用了三个位置，并将深色放在 0.5。我们还需提供一个颜色空间，用于告诉系统如何解释这些颜色分量。最后，创建渐变对象并在目标区域内绘制即可。
+
+（另请参阅本章前面关于渐变 `CIFilter` 的讨论。要了解另一种创建简单渐变的方法，请参阅下一章对 `CAGradientLayer` 的介绍。）
+
+#### Colors and Pattern
+颜色在底层是一个 `CGColor` 实例。`CGColor` 并不难使用，而且可以通过 `UIColor` 的 `init(cgColor:)` 方法将其转换为 `UIColor`，也可以通过 `UIColor` 的 `cgColor` 属性将 `UIColor` 转换回 `CGColor`。
+
+在 iOS 13 中，当用户界面风格（浅色或深色）发生变化时，系统会自动调用 `drawRect(_:)`，并且会为你设置好 `UITraitCollection.current`，因此你在绘制时使用的任何动态 `UIColor` 都会根据当前界面风格自动调整。但并不存在动态 `CGColor`，所以如果在其他场景下直接使用 `CGColor`，可能需要手动触发重绘。更多示例请参见第 29 页“Interface Style”一节。
+
+图案也可以作为一种颜色使用。你可以创建一个图案色，然后用它来描边或填充。最简单的方法是先将图案的最小单元绘制到一个`UIImage`中，然后通过调用`UIColor(patternImage:)`来生成这种颜色。下面我演示一下：创建一组水平条纹图案，用它替代纯红色，给箭头的箭尖上色（见图 2-19）。
+
+![](../../../Resource/2-19.png)
+
+```swift
+// create the pattern image tile
+let r = UIGraphicsImageRenderer(size: CGSize(width: 4, height: 4))
+let stripes = r.image { ctx in
+    let imcon = ctx.cgContext
+    imcon.setFillColor(UIColor.red.cgColor)
+    imcon.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
+    imcon.setFillColor(UIColor.blue.cgColor)
+    imcon.fill(CGRect(x: 0, y: 0, width: 4, height: 2))
+}
+
+// paint the point of the arrow with it
+let stripesPattern = UIColor(patternImage: stripes)
+stripesPattern.setFill()
+let p = UIBezierPath()
+p.move(to: CGPoint(x: 80, y: 25))
+p.addLine(to: CGPoint(x: 100, y: 0))
+p.addLine(to: CGPoint(x: 120, y: 25))
+p.fill()
+```
+Core Graphics 中对应的则是 `CGPattern`，它功能更强大，但用法也更加复杂：
+```swift
+con.saveGState()
+
+let sp2 = CGColorSpace(patternBaseSpace: nil)!
+con.setFillColorSpace(sp2)
+
+let drawStripes: CGPatternDrawPatternCallback = { _, con in
+    con.setFillColor(UIColor.red.cgColor)
+    con.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
+    con.setFillColor(UIColor.blue.cgColor)
+    con.fill(CGRect(x: 0, y: 0, width: 4, height: 2))
+}
+
+var callbacks = CGPatternCallbacks(
+    version: 0,
+    drawPattern: drawStripes,
+    releaseInfo: nil
+)
+
+let patt = CGPattern(
+    info: nil,
+    bounds: CGRect(x: 0, y: 0, width: 4, height: 4),
+    matrix: .identity,
+    xStep: 4,
+    yStep: 4,
+    tiling: .constantSpacingMinimalDistortion,
+    isColored: true,
+    callbacks: &callbacks
+)!
+
+var alph: CGFloat = 1.0
+con.setFillPattern(patt, colorComponents: &alph)
+
+con.move(to: CGPoint(x: 80, y: 25))
+con.addLine(to: CGPoint(x: 100, y: 0))
+con.addLine(to: CGPoint(x: 120, y: 25))
+con.fillPath()
+
+con.restoreGState()
+```
+
+理解这段代码时，从后往前读会更清晰。一切都围绕着用 `CGPattern` 的初始化器创建 `patt`。一个图案是在一个矩形“单元格”里完成绘制；因此你必须指定单元格的尺寸（`bounds:`）以及单元格原点之间的间距（`xStep:`、`yStep:`）。在这个例子中，单元格的大小是 4×4，水平和垂直方向上的单元格恰好相邻。你还需要提供一个应用于单元格的变换（`matrix:`），这里我们并不做任何变换，所以使用了单位矩阵。接着要指定一个平铺规则（`tiling:`）。还要说明这是颜色图案还是模版图案，这里是颜色图案，所以 `isColored:` 设置为 true。最后，需要传入一个回调函数指针（`callbacks:`），这个函数负责真正把图案绘制到单元格中。
+
+不过，我们并不是直接将回调函数传给 callbacks: 参数。实际上，这里需要传入的是指向 `CGPatternCallbacks` 结构体的指针。该结构体包含一个 version 字段（值固定为 0），以及两个函数指针：`drawPattern:` 用于在单元格中绘制图案，`releaseInfo:` 在图案释放时调用。这里我们并不指定第二个函数，它主要用于内存管理，在这个简单示例中可以省略。
+
+正如你所见，实际的图案绘制函数 `drawStripes` 非常简单。唯一需要注意的是，它必须与 `CGPattern` 的单元尺寸保持一致，否则图案不会如预期那样呈现。在这个示例中，单元尺寸为 4×4。因此，我们先将整个单元填充为红色，然后再将下半部分填充为蓝色。当这些单元在水平和垂直方向上紧密平铺时，就得到了图 2-19 中所示的条纹效果。
+
+生成 `CGPattern` 后，我们调用上下文的 `setFillPattern`；这一次不是设置填充颜色，而是指定一个填充图案，以便下一次填充路径（这里是三角形箭头头部）时使用。因为 `colorComponents:` 参数需要一个指向 `CGFloat` 的指针，所以必须事先准备好对应的 `CGFloat` 变量。
+
+剩下要解释的只是前面代码的前三行。实际上，要想用有色图案调用 `setFillPattern`，必须先将上下文的填充色空间设置为图案色空间。如果忘了这一步，当你调用 `setFillPattern` 时就会报错。也就是说，按目前的写法，图形上下文已经处于一个不理想的状态——它的填充色空间被设成了图案色空间。这样一来，如果后面还想设置普通的填充颜色，就会出问题。解决方法是将相关代码包裹在 `saveGState` 和 `restoreGState` 之间。
+
+你可能已经注意到，在图 2-19 中，条纹并没有恰好贴合箭头头部的三角形：最底下那条蓝色条纹看上去像是一半被裁掉了。这是因为图案的位置是相对于整个图形上下文而言的，而不是相对于要填充（或描边）的形状。如果在绘制前调用 `setPatternPhase` 来调整图案的相位，就可以改变图案的起始位置。
+
+#### Graphics Context Transforms
+和 `UIView` 一样，图形上下文也可以应用变换。对图形上下文施加变换并不会影响已经绘制好的内容；它像其他上下文设置一样，只对变换之后的新绘制操作生效，改变你提供的坐标与上下文绘制区域之间的映射方式。图形上下文的这种变换被称为 CTM，即“当前变换矩阵”（current transform matrix）。
+
+通常会充分利用图形上下文的 CTM（当前变换矩阵），以免自己进行复杂的坐标计算。你可以调用`concatCTM(_:)`将当前变换与任意`CGAffineTransform`相乘；也可以使用方便的方法直接对当前变换应用平移（`translateBy(x:y:)`）、缩放（`scaleBy(x:y:)`）或旋转（`rotate(by:)`）。
+
+当你获取到图形上下文时，系统已经为它设置好了基础变换，这样才能将上下文中的绘制坐标映射到屏幕坐标。你后续对上下文应用的任何变换，都会叠加在当前变换（CTM）的基础上，基础变换依然有效，绘制也不会出错。如果你希望在应用完自定义变换后恢复到基础变换状态，可以在变换前调用 `saveGState()`，在变换后调用 `restoreGState()` 来实现。
+
+下面举个例子。到目前为止，我们的代码只能在一个固定位置绘制向上箭头：它的矩形左上角被硬编码为 (80, 0)。这样做没有意义，不仅让代码难以理解，也不够灵活、难以复用。更合理的方法是先让箭头相对于 (0, 0) 绘制，也就是说在现有代码中把所有的 x 值都减去 80。这样一来，只需在绘制之前应用一次平移变换，将 (0, 0) 映射到箭头的目标左上角，就可以在任意位置绘制箭头。例如，要在 (80, 0) 绘制箭头，可以这样写：
+```swift
+con.translateBy(x:80, y:0)
+// now draw the arrow at (0,0)
+```
+旋转变换非常实用，它能让你在不做繁琐三角运算的情况下以任意角度绘制图形。但旋转操作总是围绕图形上下文的原点进行，这通常并非我们真正想要的中心点。为此，我们需要先调用`translateBy(x:y:)`平移坐标系，将原点移到理想的旋转中心；随后使用`rotate(by:)`进行旋转；旋转完成后，为了正确定位绘制内容，还要再对坐标系进行反向平移，将原点移回初始位置。
+
+为演示这一点，下面的代码会将箭头围绕尾部末端按多个角度重复绘制（见图 2-20）。由于需要多次绘制箭头，首先把箭头的绘制封装为一个 `UIImage`。这样不仅能减少重复、提高效率，还能让整个箭头（包括图案条纹）一起旋转，这是实现该效果最简单的方式：
+
+![](../../../Resource/2-20.png)
+
+```swift
+lazy var arrow: `UIImage` = {
+    let r = `UIGraphicsImageRenderer`(size: `CGSize`(width: 40, height: 100))
+    return r.image { _ in
+        self.arrowImage()
+    }
+}()
+
+func arrowImage() {
+    // obtain the current graphics context
+    let con = `UIGraphicsGetCurrentContext`()!
+    // draw the arrow into the graphics context
+    // draw it at (0,0)! adjust all x-values by subtracting 80
+    // ... actual code omitted ...
+}
+```
+
+在我们对 `draw(_:)` 的实现中，会多次绘制同一箭头图像：
+```swift
+override func `draw`(_ rect: `CGRect`) {
+    let con = `UIGraphicsGetCurrentContext`()!
+    self.arrow.draw(at: `CGPoint`(x: 0, y: 0))
+    for _ in 0..<3 {
+        con.translateBy(x: 20, y: 100)
+        con.rotate(by: 30 * .pi/180.0)
+        con.translateBy(x: -20, y: -100)
+        self.arrow.draw(at: `CGPoint`(x: 0, y: 0))
+    }
+}
+```
+
+####  Shadows
+在绘制前，调用图形上下文的 `setShadow(offset:blur:color:)` 方法来设置阴影。阴影偏移量通过 `CGSize` 指定，其中两个分量的正值分别表示向下和向右。模糊半径是一个无限制的正数；虽然苹果并没有给出具体的度量标准，但实践中发现，将其设为 12 时效果柔和自然，设为 99 时则会模糊到几乎失去形状，而更高的数值往往会出现不可预期的问题。
+
+![](../../../Resource/2-21.png)
+
+图 2-21 展示了生成图 2-20 的同一段代码的效果，只是在开始多次绘制箭头之前，我们先对绘图上下文调用了 `setShadow(offset:blur:color:)` 来添加阴影：
+```swift
+let con = UIGraphicsGetCurrentContext()!
+con.setShadow(offset: CGSize(7, 7), blur: 12)
+self.arrow.draw(at:CGPoint(0,0))
+// ... and so on
+```
+
+在图 2-21 中可能看不出来，但实际上我们是在每次绘制箭头时都调用了阴影，这意味着箭头会彼此投射阴影。假如我们想让所有箭头共同投射一份统一的阴影，该怎么做呢？可以使用透明图层，这实际上是一个子图形上下文，先累积所有绘制操作，然后再一次性添加阴影。现在，我们绘制带阴影箭头的代码如下：
+```swift
+let con = `UIGraphicsGetCurrentContext`()!
+con.setShadow(offset: `CGSize`(width: 7, height: 7), blur: 12)
+con.beginTransparencyLayer(auxiliaryInfo: nil)
+
+self.arrow.draw(at: `CGPoint`(x: 0, y: 0))
+for _ in 0..<3 {
+    con.translateBy(x: 20, y: 100)
+    con.rotate(by: 30 * .pi/180.0)
+    con.translateBy(x: -20, y: -100)
+    self.arrow.draw(at: `CGPoint`(x: 0, y: 0))
+}
+
+con.endTransparencyLayer()
+```
+
+#### Erasing
+`CGContext` 的 `clear(_:)` 方法会擦除指定 CGRect 区域内的所有已有绘制内容；如果配合裁剪使用，还能清除任意形状的区域，从而在现有绘制上“打出一个洞”。
+
+`clear(_:)` 的行为取决于图形上下文是透明还是不透明。在绘制到图像上下文时，这一点尤其明显：如果图像上下文是透明的，`clear(_:)` 会将区域擦除为透明；否则会擦除为黑色。
+
+当你直接在视图中绘制时，如果视图的`backgroundColor`为`nil`或哪怕略带透明度的颜色，调用`clear(_:)`会将指定区域擦除为透明，就像在视图（包括其背景）上打了个洞；如果背景色完全不透明，擦除结果则为黑色。这是因为视图的`backgroundColor`决定了视图对应的图形上下文是透明还是不透明，所以`clear(_:)`的表现就与前面所述的行为一致。
+
+图 2-22 如下所示：左边的蓝色方块被部分擦除成黑色，而右边的蓝色方块则被部分擦除成透明。尽管它们都是同一个 `UIView` 子类的实例，绘制的代码也完全相同！该 `UIView` 子类的 `draw(_:)` 实现如下：
+
+![](../../../Resource/2-22.png)
+
+```swift
+let con = UIGraphicsGetCurrentContext()!
+con.setFillColor(UIColor.blue.cgColor)
+con.fill(rect)
+con.clear(CGRect(0,0,30,30))
+```
+
+图 2-22 中这两个视图的区别在于，第一个视图的 `backgroundColor` 是完全不透明的纯红色（alpha = 1），而第二个视图的 `backgroundColor` 是几乎肉眼难以察觉的微微透明红色（alpha = 0.99）。更妙的是，这层红色还被蓝色填充所覆盖，根本看不见！然而，正是这个微小的透明度差异，彻底改变了 `clear(_:)` 的擦除效果。
+
+如果你跟我一样觉得这很让人困惑，一个最简单的解决方法是直接操作视图的 `layer`，在设置视图的 `backgroundColor` 之后，再将它的 `isOpaque` 属性进行相应设置：
+```swift
+self.backgroundColor = .red
+self.layer.isOpaque = false
+```
+
+这样你就能最终且可靠地控制 `clear(_:)` 的行为。如果 `layer.isOpaque` 为 `false`，`clear(_:)` 会擦除为透明；如果为 `true`，则擦除为黑色。
 
 ## Points and Pixels
+点是一个没有尺寸的定位，由 x 坐标和 y 坐标描述。在向图形上下文绘制时，你指定要绘制的点位置，这与设备的分辨率无关，因为 Core Graphics 会利用基础的 CTM（当前变换矩阵）和抗锯齿技术，将你的绘制内容恰当地映射到物理输出上。因此，在本章中，我关注的都是图形上下文空间中的“点”，而不考虑它们与屏幕像素之间的对应关系。
+
+不过，像素确实存在。像素是在现实世界中具有实际尺寸的显示单元。整数坐标的点实际上落在像素之间，如果你对像素对齐很在意，尤其是在只支持单一分辨率的设备上，这就会很关键。举个例子：如果你在一条垂直路径上用线宽为 1 的线条描边，线条会在路径两侧各占半个宽度，而在单分辨率设备上，由于它无法点亮半个像素，最终在屏幕上看上去就像是一条 2 像素宽的线一样。
+
+有时你可能会听到这样的建议：如果你觉得这种效果不理想，就将线条的位置偏移 0.5 个单位，让它正好落在像素中心。乍看似乎有效，但这种做法建立在一些太过简单的假设之上。更完善的方案是获取视图的 `contentScaleFactor` 属性——你可以用像素值除以这个系数，把像素转换为点。另一个需要考虑的是，绘制垂直或水平直线时，最精准的方式不是用 `strokePath()` 描边，而是直接填充一个矩形。下面这个 `UIView` 子类示例代码就能在任何设备上绘制出精确的 1 像素宽的垂直线（其中 `con` 是当前的图形上下文）：
+```swift
+con.fill(CGRect(100,0,1.0/self.contentScaleFactor,100))
+```
 
 ## Content Mode
+与仅仅设置背景色和子视图不同，如果一个视图本身会绘制内容，那么它就具有“内容”。这意味着在视图尺寸改变时，它的 `contentMode` 属性就非常关键。正如前面提到的，绘图系统会尽量避免让视图从头重绘，而是使用上一次绘制的缓存结果（位图后备存储）。当视图大小发生变化时，如果你的 `contentMode` 设置允许，系统会直接对这份缓存的绘图进行拉伸、缩放或重新定位。
 
+在内容来自 `draw(_:)` 的情况下，要演示这一点就有些棘手，因为需要先让视图通过 `draw(_:)` 获取内容，然后在不触发 `draw(_:)` 的前提下改变视图大小。为此，应用启动时我会创建一个自定义 `UIView` 子类 `MyView` 的实例，它负责绘制箭头；随后，在窗口显示并完成初始界面布局后，我会使用延迟方法来调整该实例的大小（有关我的延迟函数，请参见附录 B）：
+```swift
+elay(0.1) {
+    mv.bounds.size.height *= 2 // mv is the MyView instance
+}
+```
+
+我们将视图的高度翻倍，但并不会触发 `draw(_:)` 的调用。结果是，视图的绘制内容也以双倍于正常高度的方式显示。如果我们自定义视图的 `draw(_:)` 代码与生成图 2-18 的代码相同，就会得到图 2-23 所示的效果。
+
+![](../../../Resource/2-23.png)
+
+不过，迟早会再次调用 `draw(_:)`，绘图也会按照我们的代码重新渲染。由于我们的代码并没有根据视图的 `bounds` 高度动态调整箭头的高度，而是始终以固定高度绘制，因此箭头最终会恢复到原来的尺寸。
+
+视图的 `contentMode` 属性通常应与它的绘制方式保持一致。我们的 `draw(_:)` 代码是根据视图左上角（bounds 原点）来确定箭头的大小和位置，因此可以将 `contentMode` 设置为 `.topLeft`。另一种做法是将其设置为 `.redraw`，这样在视图大小改变时，系统不会自动缩放缓存的内容，而是会调用 `setNeedsDisplay`，最终触发 `draw(_:)` 重新绘制视图内容。
