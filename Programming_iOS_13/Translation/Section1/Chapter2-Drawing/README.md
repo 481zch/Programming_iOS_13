@@ -1086,7 +1086,7 @@ con.addLine(to:CGPoint(120, 25))
 con.fillPath()
 ```
 
-> 我的图形上下文有多大？
+> 我的图形上下文有多大？  
 乍看之下，似乎没有办法直接获知图形上下文的尺寸。通常这也无关紧要，因为要么是你自己创建了这个上下文，要么它来源于一个你已知尺寸的对象（比如 `UIView`）。但实际上，由于图形上下文的默认裁剪区域就是整个上下文，你可以通过 `boundingBoxOfClipPath` 获取该上下文的“边界”。
 
 用于裁剪的 `UIBezierPath` 命令有 `usesEvenOddFillRule` 和 `addClip`。
