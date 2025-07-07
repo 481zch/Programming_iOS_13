@@ -46,7 +46,8 @@
 * `window` 属性属于场景委托（`SceneDelegate`），而不属于应用委托（`AppDelegate`）。
 
 ### App Without a Storyboard
-完全可以编写一个不使用主 storyboard 的应用：
+完全可以编写一个不使用main storyboard 的应用：
+* 在 iOS 12 及更早版本中，这意味着 Info.plist 中没有 “Main storyboard file base name” 这一条目。
 
 
 

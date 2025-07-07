@@ -972,8 +972,8 @@ class MyView: UIView {
 
 对当前路径执行描边（`strokePath()`）或填充（`fillPath()`），这两者都会在操作完成后清除该路径。  
 `strokePath()`, `fillPath(using:)` 和 `drawPath()`。如果你想在一个命令中同时对路径进行描边和填充，就应使用 `drawPath()`，因为如果你仅用 `strokePath()` 先描边，路径会被清除，之后就无法再填充了。还有一些便捷函数，可以直接从一个 `CGRect` 或类似对象创建路径，并一次性完成描边或填充：
-* `stroke(_\:)`, `strokeLineSegments(between:)`
-* `fill(_\:)`
+* `stroke(_:)`, `strokeLineSegments(between:)`
+* `fill(_:)`
 * `strokeEllipse(in:)`
 * `fillEllipse(in:)`
 
@@ -1086,12 +1086,8 @@ con.addLine(to:CGPoint(120, 25))
 con.fillPath()
 ```
 
-> How Big Is My Context?  
-At first blush, it appears that there’s no way to learn a graphics context’s size. Typi‐
-cally, this doesn’t matter, because either you created the graphics context or it’s the
-graphics context of some object whose size you know, such as a UIView. But in fact,
-because the default clipping region of a graphics context is the entire context, you can
-use boundingBoxOfClipPath to learn the context’s “bounds.”
+> 我的图形上下文有多大？
+乍看之下，似乎没有办法直接获知图形上下文的尺寸。通常这也无关紧要，因为要么是你自己创建了这个上下文，要么它来源于一个你已知尺寸的对象（比如 `UIView`）。但实际上，由于图形上下文的默认裁剪区域就是整个上下文，你可以通过 `boundingBoxOfClipPath` 获取该上下文的“边界”。
 
 用于裁剪的 `UIBezierPath` 命令有 `usesEvenOddFillRule` 和 `addClip`。
 
